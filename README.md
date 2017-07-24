@@ -1,0 +1,3 @@
+This is a repository for my work on the Wikipedia Kaggle Competition.
+
+I make heavy use of the UCR DTW code suite produced by Thanawin Rakthanmanon, Bilson Campana, Abdullah Mueen, Gustavo Batista and Eamonn Keogh from UCR. All credit should be given to them. That said, I have made significant modifications to the code-base. Their code targets finding the subsequence of a long data series that has the closest dynamic time warping (DTW) to an query time series. I changed the code to search a set of time series to find the nearest neighbor of the query series. My problem is an isomorphism of the problem they already solved, so I claim no theoretical breakthroughs. I rewrote the code to suit the problem at hand.
