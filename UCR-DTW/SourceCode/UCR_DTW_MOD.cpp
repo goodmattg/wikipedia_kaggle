@@ -181,6 +181,7 @@ void lower_upper_lemire(double *t, int len, int offset, int r, double *l, double
     destroy(&dl);
 }
 
+
 /// Calculate quick lower bound
 /// Usually, LB_Kim take time O(m) for finding top,bottom,fist and last.
 /// However, because of z-normalization the top and bottom cannot give siginifant benefits.
@@ -394,405 +395,8 @@ void error(int id)
         printf("LB_Kim reeturn NaN");
     }
 
-    fclose(query_fptr);
-    fclose(data_fptr);
-    fclose(out_fptr);
-
     exit(1);
 }
-
-
-
-
-/// ------------------------------------------------------------------------------
-
-/// Main Function
-// int main(  int argc , char *argv[] )
-// {
-//     FILE *fp;            /// data file pointer
-//     FILE *qp;            /// query file pointer
-//     double bsf;          /// best-so-far
-//     double *q;       /// data array and query array
-//     int *order;          ///new order of the query
-//     double *qo, *u_query, *l_query,  *u_query_o, *l_query_o,*cb, *cb1, *cb2;
-
-//     double d;
-//     long long i , j;
-//     double ex , ex2 , mean, std;
-//     int m=-1, r=-1;
-//     long long loc = 0;
-//     double t1,t2;
-//     int kim = 0,keogh = 0, keogh2 = 0;
-//     double dist=0, lb_kim=0, lb_k=0, lb_k2=0;
-//     double *buffer, *u_buff, *l_buff;
-//     Index *Q_tmp;
-
-
-//     int EPOCH;
-//     int chunks_in_epoch; // "chunks in epoch"
-//     double *epoch_ex, *epoch_ex2, *epoch_mean, *epoch_std;
-
-//     /// If not enough input, display an error.
-//     if (argc<=3)
-//         error(4);
-
-//     /// read size of the query
-//     if (argc>3)
-//         m = atol(argv[3]);
-
-//     /// For every EPOCH points, all cummulative values, such as ex (sum), ex2 (sum square), will be restarted for reducing the floating point error.
-//     /// EPOCH set as multiple of m
-//     if (m > 100000) {
-//         chunks_in_epoch = 1;
-//         EPOCH = m;
-//     } else {
-//         chunks_in_epoch = 100000/m;
-//         EPOCH = chunks_in_epoch * m;
-//     }
-//     printf("Chunks Per Epoch: %d\n",chunks_in_epoch);
-
-//     /// read warping windows
-//     if (argc>4)
-//     {   double R = atof(argv[4]);
-//         if (R<=1)
-//             r = floor(R*m);
-//         else
-//             r = floor(R);
-//     }
-//     printf("Warping window width: %d\n", r);
-
-//     fp = fopen(argv[1],"r");
-//     if( fp == NULL )
-//         error(2);
-
-//     qp = fopen(argv[2],"r");
-//     if( qp == NULL )
-//         error(2);
-
-//     /// start the clock
-//     t1 = clock();
-
-//     /**
-//     ==================================================================
-//     **/
-
-//     // Query Data
-//     q = (double *)malloc(sizeof(double)*m);
-//     if( q == NULL )
-//         error(1);
-
-//     // Ordered Query_Data
-//     qo = (double *)malloc(sizeof(double)*m);
-//     if( qo == NULL )
-//         error(1);
-
-//     // Query Upper Envelope
-//     u_query = (double *)malloc(sizeof(double)*m);
-//     if( u_query == NULL )
-//         error(1);
-
-//     // Ordered Query Upper Envelope
-//     u_query_o = (double *)malloc(sizeof(double)*m);
-//     if( u_query_o == NULL )
-//         error(1);
-
-//     // Query Lower Envelope
-//     l_query = (double *)malloc(sizeof(double)*m);
-//     if( l_query == NULL )
-//         error(1);
-
-//     //  Ordered Query Lower Envelope
-//     l_query_o = (double *)malloc(sizeof(double)*m);
-//     if( l_query_o == NULL )
-//         error(1);
-
-//     // Indices of sorted query data
-//     order = (int *)malloc(sizeof(int)*m);
-//     if( order == NULL )
-//         error(1);
-
-//     // Temporary Structure for query sorting
-//     Q_tmp = (Index *)malloc(sizeof(Index)*m);
-//     if( Q_tmp == NULL )
-//         error(1);
-
-//     buffer = (double *)malloc(sizeof(double)*EPOCH);
-//     if( buffer == NULL )
-//         error(1);
-
-//     ///------------------------------------------------------------
-
-//     epoch_ex = (double *)malloc(sizeof(double)*chunks_in_epoch);
-//     if( epoch_ex == NULL )
-//         error(1);
-
-//     epoch_ex2 = (double *)malloc(sizeof(double)*chunks_in_epoch);
-//     if( epoch_ex2 == NULL )
-//         error(1);
-
-//     epoch_mean = (double *)malloc(sizeof(double)*chunks_in_epoch);
-//     if( epoch_mean == NULL )
-//         error(1);
-
-//     epoch_std = (double *)malloc(sizeof(double)*chunks_in_epoch);
-//     if( epoch_std == NULL )
-//         error(1);
-
-//     u_buff = (double *)malloc(sizeof(double)*m);
-//     if( u_buff == NULL )
-//         error(1);
-
-//     l_buff = (double *)malloc(sizeof(double)*m);
-//     if( l_buff == NULL )
-//         error(1);
-
-//     cb = (double *)malloc(sizeof(double)*m);
-//     if( cb == NULL )
-//         error(1);
-
-//     cb1 = (double *)malloc(sizeof(double)*m);
-//     if( cb1 == NULL )
-//         error(1);
-
-//     cb2 = (double *)malloc(sizeof(double)*m);
-//     if( cb2 == NULL )
-//         error(1);
-
-
-//     /// Read query file
-//     bsf = INF;
-//     i = 0;
-//     j = 0;
-//     ex = ex2 = 0;
-
-//     while(fscanf(qp,"%lf",&d) != EOF && i < m)
-//     {
-//         ex += d;
-//         ex2 += d*d;
-//         q[i] = d; // q is the query file data
-//         i++;
-//     }
-//     fclose(qp);
-
-//     /// Z-normalize the query inplace
-//     mean = ex/m;
-//     std = ex2/m;
-//     std = sqrt(std-mean*mean);
-//     for( i = 0 ; i < m ; i++ ) {
-//         q[i] = (q[i] - mean)/std;
-//         if (isnan(q[i])) {
-//             q[i] = 0.0;
-//         }
-//     }
-
-
-//     /// Create envelop of the query
-//     /// lower envelop:  l_query
-//     /// upper envelop:  u_query
-//     lower_upper_lemire(q, m, 0, r, l_query, u_query);
-
-//     /// Sort the query one time by abs(z-norm(q[i]))
-//     for( i = 0; i<m; i++)
-//     {
-//         Q_tmp[i].value = q[i];
-//         Q_tmp[i].index = i;
-//     }
-//     qsort(Q_tmp, m, sizeof(Index),comp);
-//     cout << "Query sorted\n";
-
-//     /// also create another arrays for keeping sorted envelop
-//     for(i=0; i<m; i++)
-//     {   int o = Q_tmp[i].index;
-//         order[i] = o;
-//         qo[i] = q[o];
-//         u_query_o[i] = u_query[o];
-//         l_query_o[i] = l_query[o];
-//     }
-//     free(Q_tmp);
-
-//     /// Initialize the cummulative lower bound arrays
-//     for( i=0; i<m; i++)
-//     {   cb[i]=0;
-//         cb1[i]=0;
-//         cb2[i]=0;
-//     }
-
-
-//     i = 0;  /// current index of the starting pt. in EPOCH -> [i, i+m-1]
-//     ex = ex2 = 0;
-//     bool done = false;
-//     int it=0, k=0;
-//     int vals_in_epoch;
-//     int epoch_count = 0;
-
-//     while(!done)
-//     {
-//          printf("\nStarting Epoch : %d\n", it);
-
-//         /// Attempt to read in EPOCH and accumulate data for later z-normalize
-//         int chunk_ctr;
-//         vals_in_epoch = 0;
-//         for(int k=0; k<EPOCH; k++)
-//         {
-//             chunk_ctr = k/m;
-//             if (fscanf(fp,"%lf",&d) != EOF)
-//             {
-//                 buffer[k] = d;
-//                 epoch_ex[chunk_ctr] += d;
-//                 epoch_ex2[chunk_ctr] += d*d;
-//             } else
-//             {
-//                 printf("Hit EOF while reading data\n");
-//                 if (k < m-1)
-//                 {
-//                     // error here
-//                     cout << "weird values read in less than m-1";
-//                     break;
-//                 } else
-//                 {
-//                     vals_in_epoch = k;
-//                     done = true;
-//                     break;
-//                 }
-
-//             }
-//         }
-//         // Number of values in the epoch
-//         if (!vals_in_epoch) {
-//             vals_in_epoch = EPOCH;
-//         }
-//         printf("Vals in epoch: %d\n", vals_in_epoch);
-
-//         // Z-normalize routine
-//         for (int ch =0 ; ch < chunks_in_epoch ; ch++) {
-//             // mean = ex/m;
-//             // std = ex2/m;
-//             // std = sqrt(std-mean*mean);
-//             epoch_mean[ch] = epoch_ex[ch]/m;
-//             epoch_std[ch] = epoch_ex2[ch]/m;
-//             epoch_std[ch] = sqrt(epoch_std[ch]-epoch_mean[ch]*epoch_mean[ch]);
-//             // Now Z-normalize each chunk in the buffer
-//             for (int idx = ch*m ; idx < (ch+1)*m ; idx++) {
-//                 double tmp = buffer[idx];
-//                 buffer[idx] = (buffer[idx] - epoch_mean[ch]) / epoch_std[ch];
-//                 if (isnan(buffer[idx])) {
-//                     // Weird case where entire row is zero - just return 0.0 for all values
-//                     buffer[idx] = 0.0;
-//                 }
-//             }
-//         }
-//         printf("Epoch z-normalized\n");
-
-//         // Now iterate over chunks in epoch to compute DTW
-//         for (int ch = 0 ; ch < chunks_in_epoch ; ch++) {
-
-//             // Create lower-envelope and upper-envolope of the chunk
-//             lower_upper_lemire(buffer, m, ch*m, r, l_buff, u_buff);
-//             // l_buff   :   chunk lower envelope
-//             // u_buff   :   chunk uppper envelope
-
-//             /// Just for printing a dot for approximate a million point.
-//             fprintf(stderr,".");
-//             /// Use a constant lower bound to prune the obvious subsequence. VERIFIED
-
-//             if (isnan(lb_kim = lb_kim_hierarchy(buffer, q, ch*m, m, bsf)))
-//                 error(5);
-
-//             if (lb_kim < bsf)
-//             {
-//                 // Use a linear time lower bound to prune;
-//                 // u_query, lo are envelop of the query.
-//                 // VERIFIED
-//                 lb_k = lb_keogh_cumulative(order, buffer, u_query_o, l_query_o, cb1, ch*m, m, bsf);
-
-//                 if (lb_k < bsf)
-//                 {
-//                     /// Use another lb_keogh to prune
-//                     /// qo is the sorted query. tz is unsorted z_normalized data.
-//                     /// l_buff, u_buff are big envelop for all data in this chunk
-//                     lb_k2 = lb_keogh_data_cumulative(order, qo, cb2, l_buff, u_buff, m, bsf);
-//                     if (lb_k2 < bsf)
-//                     {
-//                         /// Choose better lower bound between lb_keogh and lb_keogh2 to be used in early abandoning DTW
-//                         /// Note that cb and cb2 will be cumulative summed here.
-//                         if (lb_k > lb_k2)
-//                         {
-//                             cb[m-1]=cb1[m-1];
-//                             for(k=m-2; k>=0; k--)
-//                                 cb[k] = cb[k+1]+cb1[k];
-//                         }
-//                         else
-//                         {
-//                             cb[m-1]=cb2[m-1];
-//                             for(k=m-2; k>=0; k--)
-//                                 cb[k] = cb[k+1]+cb2[k];
-//                         }
-
-//                         /// Compute DTW and early abandoning if possible
-//                         dist = dtw(buffer, ch*m, q, cb, m, r, bsf);
-
-//                         if( dist < bsf )
-//                         {   /// Update bsf
-//                             /// loc is the real starting location of the nearest neighbor in the file
-//                             bsf = dist;
-//                             loc = it;
-//                             printf("BSF val: %f\n",bsf);
-//                         }
-//                     } else
-//                         keogh2++;
-//                 } else
-//                     keogh++;
-//             } else
-//                 kim++;
-
-//             it++;
-//         }
-//         /// If the size of last chunk is less then EPOCH, then no more data and terminate.
-//         epoch_count++;
-//     }
-
-
-//     // i = (it)*(EPOCH-m+1) + ep;
-//     fclose(fp);
-//     free(q);
-//     free(u_query);
-//     free(l_query);
-//     free(l_query_o);
-//     free(u_query_o);
-//     free(cb);
-//     free(cb1);
-//     free(cb2);
-//     free(l_buff);
-//     free(u_buff);
-
-//     t2 = clock();
-//     printf("\n");
-
-//     printf("Location: %lld (row %lld)\n", loc, loc+1);
-//     cout << "Distance : " << sqrt(bsf) << endl;
-//     cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;
-
-//     /// printf is just easier for formating ;)
-//     printf("\n");
-//     printf("Pruned by LB_Kim    : %6.2f%%\n", ((double) kim / it)*100);
-//     printf("Pruned by LB_Keogh  : %6.2f%%\n", ((double) keogh / it)*100);
-//     printf("Pruned by LB_Keogh2 : %6.2f%%\n", ((double) keogh2 / it)*100);
-//     printf("DTW Calculation     : %6.2f%%\n", 100-(((double)kim+keogh+keogh2)/it*100));
-//     return 0;
-// }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -827,7 +431,7 @@ int NearestNeighborSearch(FILE *data_fptr, FILE *query_fptr, FILE *out_fptr, int
     double bsf;          /// best-so-far
     double *q;       /// data array and query array
     int *order;          ///new order of the query
-    double *qo, *u_query, *l_query,  *u_query_o, *l_query_o,*cb, *cb1, *cb2;
+    double *qo, *u_query, *l_query, *u_query_o, *l_query_o,*cb, *cb1, *cb2;
 
     double d;
     long long i , j;
@@ -838,6 +442,7 @@ int NearestNeighborSearch(FILE *data_fptr, FILE *query_fptr, FILE *out_fptr, int
     double dist=0, lb_kim=0, lb_k=0, lb_k2=0;
     double *buffer, *u_buff, *l_buff;
     Index *Q_tmp;
+    long query_offset = 0;
 
     // RUN-TIME FLAGS
     bool QUERY_FINISHED = false;
@@ -846,6 +451,8 @@ int NearestNeighborSearch(FILE *data_fptr, FILE *query_fptr, FILE *out_fptr, int
     int EPOCH;
     int chunks_in_epoch; // "chunks in epoch"
     double *epoch_ex, *epoch_ex2, *epoch_mean, *epoch_std;
+
+    printf("m: %d\nr: %d\n",m,r);
 
     /*
     For every EPOCH points, all cummulative values, such as ex (sum),
@@ -945,12 +552,14 @@ int NearestNeighborSearch(FILE *data_fptr, FILE *query_fptr, FILE *out_fptr, int
         error(1);
 
     while (!QUERY_FINISHED)
-
     {
         /// Line in the query file
         bsf = INF;
         i = j = 0;
         ex = ex2 = 0;
+
+        // long size = ftell(query_fptr);
+        // printf ("Current pointer position: %ld bytes.\n", size);
 
         for (i = 0; i < m; i++) {
             if (fscanf(query_fptr,"%lf",&d) != EOF) {
@@ -959,21 +568,32 @@ int NearestNeighborSearch(FILE *data_fptr, FILE *query_fptr, FILE *out_fptr, int
                 q[i] = d;
             } else {
                 QUERY_FINISHED = true;
+                // WILL CAUSE DATA LEAKS
+                return 0;
             }
         }
         fprintf(stderr,".\n");
 
-
         /// Z-normalize the query inplace
-        mean = ex/m;
-        std = ex2/m;
-        std = sqrt(std-mean*mean);
-        for( i = 0 ; i < m ; i++ ) {
-            q[i] = (q[i] - mean)/std;
+        // mean = ex/m;
+        // std = ex2/m;
+        // std = sqrt(std-mean*mean);
+        // for( i = 0 ; i < m ; i++ ) {
+        //     q[i] = (q[i] - mean)/std;
+        //     if (isnan(q[i])) {
+        //         printf("Ran into NaN\n");
+        //         q[i] = 0.0;
+        //     }
+        // }
+
+        // Scan read-in query for NaN
+        for (i = 0 ; i < m ; i++) {
             if (isnan(q[i])) {
                 q[i] = 0.0;
+                printf("Ran into NaN\n");
             }
         }
+
 
         /// Create envelop of the query
         /// lower envelop:  l_query
@@ -1013,9 +633,8 @@ int NearestNeighborSearch(FILE *data_fptr, FILE *query_fptr, FILE *out_fptr, int
 
 
         DATA_FINISHED = false;
-        rewind(data_fptr);
+        rewind(data_fptr); // Always start from beginning of data
         // printf("Starting on Data");
-
 
         while(!DATA_FINISHED)
         {
@@ -1033,7 +652,7 @@ int NearestNeighborSearch(FILE *data_fptr, FILE *query_fptr, FILE *out_fptr, int
                     epoch_ex2[chunk_ctr] += d*d;
                 } else
                 {
-                    // printf("Hit EOF while reading data\n");
+                    printf("Hit EOF while reading data\n");
                     if (k < m-1)
                     {
                         // error here
@@ -1043,6 +662,7 @@ int NearestNeighborSearch(FILE *data_fptr, FILE *query_fptr, FILE *out_fptr, int
                     {
                         vals_in_epoch = k;
                         DATA_FINISHED = true;
+                        printf("Read in: %d chunks\n", chunk_ctr);
                         break;
                     }
                 }
@@ -1053,14 +673,14 @@ int NearestNeighborSearch(FILE *data_fptr, FILE *query_fptr, FILE *out_fptr, int
             }
             // printf("Vals in epoch: %d\n", vals_in_epoch);
 
-            // Z-normalize routine
+            // Z-normalize routine (already completed)
             for (int ch =0 ; ch < chunks_in_epoch ; ch++) {
-                epoch_mean[ch] = epoch_ex[ch]/m;
-                epoch_std[ch] = epoch_ex2[ch]/m;
-                epoch_std[ch] = sqrt(epoch_std[ch]-epoch_mean[ch]*epoch_mean[ch]);
+                // epoch_mean[ch] = epoch_ex[ch]/m;
+                // epoch_std[ch] = epoch_ex2[ch]/m;
+                // epoch_std[ch] = sqrt(epoch_std[ch]-epoch_mean[ch]*epoch_mean[ch]);
                 // Now Z-normalize each chunk in the buffer
                 for (int idx = ch*m ; idx < (ch+1)*m ; idx++) {
-                    buffer[idx] = (buffer[idx] - epoch_mean[ch]) / epoch_std[ch];
+                    // buffer[idx] = (buffer[idx] - epoch_mean[ch]) / epoch_std[ch];
                     if (isnan(buffer[idx])) {
                         // Weird case where entire row is zero - just return 0.0 for all values
                         buffer[idx] = 0.0;
@@ -1071,17 +691,12 @@ int NearestNeighborSearch(FILE *data_fptr, FILE *query_fptr, FILE *out_fptr, int
 
             // Now iterate over chunks in epoch to compute DTW
             for (int ch = 0 ; ch < chunks_in_epoch ; ch++) {
-
                 // Create lower-envelope and upper-envolope of the chunk
                 lower_upper_lemire(buffer, m, ch*m, r, l_buff, u_buff);
-                // l_buff   :   chunk lower envelope
-                // u_buff   :   chunk uppper envelope
 
-                /// Just for printing a dot for approximate a million point.
-                /// Use a constant lower bound to prune the obvious subsequence. VERIFIED
-
-                if (isnan(lb_kim = lb_kim_hierarchy(buffer, q, ch*m, m, bsf)))
+                if (isnan(lb_kim = lb_kim_hierarchy(buffer, q, ch*m, m, bsf))) {
                     error(5);
+                }
 
                 if (lb_kim < bsf)
                 {
@@ -1123,33 +738,20 @@ int NearestNeighborSearch(FILE *data_fptr, FILE *query_fptr, FILE *out_fptr, int
                                 loc = it;
                                 // printf("BSF val: %f\n",bsf);
                             }
-                        } else
-                            keogh2++;
-                    } else
-                        keogh++;
-                } else
-                    kim++;
-
+                        }
+                    }
+                }
                 it++;
             }
-            /// If the size of last chunk is less then EPOCH, then no more data and terminate.
             epoch_count++;
         }
 
         // printf("Data Round done\n");
         fprintf(out_fptr, "%lld\n", loc);
-
         // printf("Location: %lld (row %lld)\n", loc, loc+1);
         // cout << "Distance : " << sqrt(bsf) << endl;
 
     }
-
-        fclose(query_fptr);
-        fclose(data_fptr);
-        fclose(out_fptr);
-
-
-
         free(Q_tmp);
         free(q);
         free(u_query);
@@ -1202,6 +804,7 @@ int main(int argc, char *argv[]) {
     FILE *d_fptr; // data file pointer
     FILE *q_fptr; // query file pointer
     FILE *o_fptr;  // output file pointer
+
     int m=-1, r=-1;
 
     if (argc < 5) {
@@ -1239,8 +842,11 @@ int main(int argc, char *argv[]) {
 
     /* ---------------------------------------------------------------------- */
 
-    return 0;
+    fclose(q_fptr);
+    fclose(d_fptr);
+    fclose(o_fptr);
 
+    return 0;
 }
 
 
