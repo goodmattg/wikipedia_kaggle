@@ -435,7 +435,6 @@ int NearestNeighborSearch(FILE *data_fptr, FILE *query_fptr, FILE *out_fptr, int
 
     double d;
     long long i , j;
-    double ex , ex2 , mean, std;
     long long loc = 0;
     double t1, t2;
     int kim = 0,keogh = 0, keogh2 = 0;
@@ -515,22 +514,6 @@ int NearestNeighborSearch(FILE *data_fptr, FILE *query_fptr, FILE *out_fptr, int
     if( buffer == NULL )
         error(1);
 
-    epoch_ex = (double *)malloc(sizeof(double)*chunks_in_epoch);
-    if( epoch_ex == NULL )
-        error(1);
-
-    epoch_ex2 = (double *)malloc(sizeof(double)*chunks_in_epoch);
-    if( epoch_ex2 == NULL )
-        error(1);
-
-    epoch_mean = (double *)malloc(sizeof(double)*chunks_in_epoch);
-    if( epoch_mean == NULL )
-        error(1);
-
-    epoch_std = (double *)malloc(sizeof(double)*chunks_in_epoch);
-    if( epoch_std == NULL )
-        error(1);
-
     u_buff = (double *)malloc(sizeof(double)*m);
     if( u_buff == NULL )
         error(1);
@@ -556,35 +539,18 @@ int NearestNeighborSearch(FILE *data_fptr, FILE *query_fptr, FILE *out_fptr, int
         /// Line in the query file
         bsf = INF;
         i = j = 0;
-        ex = ex2 = 0;
 
-        // long size = ftell(query_fptr);
-        // printf ("Current pointer position: %ld bytes.\n", size);
-
+        // Read next line of the query file
         for (i = 0; i < m; i++) {
             if (fscanf(query_fptr,"%lf",&d) != EOF) {
-                ex += d;
-                ex2 += d*d;
                 q[i] = d;
             } else {
                 QUERY_FINISHED = true;
-                // WILL CAUSE DATA LEAKS
+                // WILL CAUSE DATA LEAKS - nothing is freed
                 return 0;
             }
         }
         fprintf(stderr,".\n");
-
-        /// Z-normalize the query inplace
-        // mean = ex/m;
-        // std = ex2/m;
-        // std = sqrt(std-mean*mean);
-        // for( i = 0 ; i < m ; i++ ) {
-        //     q[i] = (q[i] - mean)/std;
-        //     if (isnan(q[i])) {
-        //         printf("Ran into NaN\n");
-        //         q[i] = 0.0;
-        //     }
-        // }
 
         // Scan read-in query for NaN
         for (i = 0 ; i < m ; i++) {
@@ -593,7 +559,6 @@ int NearestNeighborSearch(FILE *data_fptr, FILE *query_fptr, FILE *out_fptr, int
                 printf("Ran into NaN\n");
             }
         }
-
 
         /// Create envelop of the query
         /// lower envelop:  l_query
@@ -626,7 +591,6 @@ int NearestNeighborSearch(FILE *data_fptr, FILE *query_fptr, FILE *out_fptr, int
         }
 
         i = 0;  /// current index of the starting pt. in EPOCH -> [i, i+m-1]
-        ex = ex2 = 0;
         int it=0, k=0;
         int vals_in_epoch;
         int epoch_count = 0;
@@ -647,15 +611,12 @@ int NearestNeighborSearch(FILE *data_fptr, FILE *query_fptr, FILE *out_fptr, int
                 chunk_ctr = k/m;
                 if (fscanf(data_fptr,"%lf",&d) != EOF)
                 {
-                    buffer[k] = d;
-                    epoch_ex[chunk_ctr] += d;
-                    epoch_ex2[chunk_ctr] += d*d;
+                    buffer[k] = (isnan(d) ? 0.0 : d);
                 } else
                 {
-                    printf("Hit EOF while reading data\n");
+                    // printf("Hit EOF while reading data\n");
                     if (k < m-1)
                     {
-                        // error here
                         cout << "weird values read in less than m-1";
                         break;
                     } else
@@ -672,22 +633,6 @@ int NearestNeighborSearch(FILE *data_fptr, FILE *query_fptr, FILE *out_fptr, int
                 vals_in_epoch = EPOCH;
             }
             // printf("Vals in epoch: %d\n", vals_in_epoch);
-
-            // Z-normalize routine (already completed)
-            for (int ch =0 ; ch < chunks_in_epoch ; ch++) {
-                // epoch_mean[ch] = epoch_ex[ch]/m;
-                // epoch_std[ch] = epoch_ex2[ch]/m;
-                // epoch_std[ch] = sqrt(epoch_std[ch]-epoch_mean[ch]*epoch_mean[ch]);
-                // Now Z-normalize each chunk in the buffer
-                for (int idx = ch*m ; idx < (ch+1)*m ; idx++) {
-                    // buffer[idx] = (buffer[idx] - epoch_mean[ch]) / epoch_std[ch];
-                    if (isnan(buffer[idx])) {
-                        // Weird case where entire row is zero - just return 0.0 for all values
-                        buffer[idx] = 0.0;
-                    }
-                }
-            }
-            // printf("Epoch z-normalized\n");
 
             // Now iterate over chunks in epoch to compute DTW
             for (int ch = 0 ; ch < chunks_in_epoch ; ch++) {
