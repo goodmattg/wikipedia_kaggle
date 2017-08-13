@@ -1,0 +1,37 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1404\cocoasubrtf470
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\froman\fcharset0 Times-Roman;}
+{\colortbl;\red255\green255\blue255;}
+\margl1440\margr1440\vieww12280\viewh17660\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs36 \cf0 My general impression is that looking at the actual content of any of these pages is only useful for clustering. All in all, everyone here is going to cluster the data, tune optimal parameters for each cluster using some tool or model type (Prophet, ARIMA, ARMA, etc.). My only interest is with the clustering. What is the best approach to cluster this dataset?\
+\
+I looked to the research and settled on 
+\b Dynamic Time Warping (DTW)
+\b0  from Keogh et. al from UC Riverside. For any pair of time series signals, we can find the energy of the signal that minimizes the distance between two input signals. DTW can easily show that time warped signals are the same. This technique has been highly effective in classifying EEG and other time-varying signals. \
+\
+\pard\pardeftab720\li640\fi-640\sl280\sa240\partightenfactor0
+
+\f1\fs24 \cf0 \expnd0\expndtw0\kerning0
+Rakthanmanon, T., Campana, B., Mueen, A., Batista, G., Westover, B., Zhu, Q., \'85 Keogh, E. (n.d.). Searching and Mining Trillions of Time Series Subsequences under Dynamic Time Warping.\
+Mueen, A., & Keogh, E. (2016). Extracting Optimal Performance from Dynamic Time Warping, 2129\'962130.\
+Lemire, D. (2009). Faster retrieval with a two-pass dynamic-time-warping lower bound, 
+\i 42
+\i0 , 2169\'962180. http://doi.org/10.1016/j.patcog.2008.11.030
+\f0\fs36 \kerning1\expnd0\expndtw0 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 I then 
+\b rewrote the UCR-DTW C++ tool
+\b0  to do nearest-neighbor search instead of subsequence search. Basically, the tool now searches a list of time-series to find the one that minimizes the DTW distance. Because of optimizations in the UCR-DTW tool, we manage to only compute the DTW in <10% of cases. \
+\
+
+\b tldr
+\b0 ; \
+\
+Sample 1000 rows from our ~140000 rows and compute pairwise DTW (so we have the DTW distance between all 1 million combinations). Run hierarchical clustering on the 1000 samples to produce cluster labels. Now use the rewritten DTW tool to find the nearest neighbor of the remaining ~130000 rows from the sample 1000 rows. Assign the query roles to the cluster of their nearest neighbhor. \
+\
+We get some interesting results. About ~80000 rows belong to one cluster - so treat that cluster as the base data set and run your standard model. The smaller cluster have predictable features like single large spikes, uniformity, etc. So for those, tune your model appropriately. \
+\
+Reach out with any questions. I\'92m looking to join a team - you can do all the fun model stuff, I\'92ll grind out the most effective clusters. \
+\
+http://imgur.com/a/s1ajE}
